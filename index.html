@@ -25,7 +25,7 @@
         .btn:active{ background: var(--neon-cyan); color:#000; }
         .hud{ width:100%; display:flex; justify-content:space-between; font-size:12px; color:var(--neon-cyan); padding:10px; }
         .board-wrap{ flex:1; width:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
-        .board{ position:relative; }
+        .board{ position:relative; transform-origin: center center; }
         .tile{ position:absolute; width: 50px; height: 65px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size: 24px; background: #fff; border:2px solid #333; cursor:pointer; }
         .tile.locked{ filter: brightness(0.4); }
         .tile.selected{ border-color: var(--neon-pink); box-shadow: 0 0 10px var(--neon-pink); transform: scale(1.1); }
@@ -46,7 +46,7 @@
             <div>LIV. <span id="hudLevel">1</span></div>
             <div>MOSSE <span id="hudMoves">0</span></div>
         </div>
-        <div class="board-wrap"><div class="board" id="board"></div></div>
+        <div class="board-wrap" id="boardWrap"><div class="board" id="board"></div></div>
         <button class="btn" id="inAbort" style="margin-top:10px;">MENU</button>
     </div>
 
@@ -83,17 +83,35 @@
 
         function renderBoard(){
             const boardEl = document.getElementById('board');
+            const wrapEl = document.getElementById('boardWrap');
             boardEl.innerHTML = '';
+
+            let maxX = 0, maxY = 0;
             state.board.filter(t => !t.removed).forEach(t => {
                 const el = document.createElement('div');
                 el.className = `tile ${t.id === selectedId ? 'selected' : ''}`;
                 el.innerHTML = GLYPHS[t.type];
-                el.style.left = (t.x*45 + t.z*8) + 'px';
-                el.style.top = (t.y*60 + t.z*8) + 'px';
+                const left = t.x*45 + t.z*8;
+                const top = t.y*60 + t.z*8;
+                el.style.left = left + 'px';
+                el.style.top = top + 'px';
                 el.style.zIndex = t.z * 10;
                 el.onclick = () => onTileClick(t.id);
                 boardEl.appendChild(el);
+                maxX = Math.max(maxX, left + 50);
+                maxY = Math.max(maxY, top + 65);
             });
+
+            // Give the board an intrinsic size so flex centering can act on it
+            boardEl.style.width = maxX + 'px';
+            boardEl.style.height = maxY + 'px';
+
+            // Scale the board to fit within the available area, keeping it centered
+            const wrapW = wrapEl.clientWidth;
+            const wrapH = wrapEl.clientHeight;
+            const scale = Math.min(wrapW / maxX, wrapH / maxY, 1);
+            boardEl.style.transform = `scale(${scale})`;
+
             document.getElementById('hudLevel').textContent = state.level;
             document.getElementById('hudMoves').textContent = state.moves;
         }
@@ -122,6 +140,8 @@
         document.getElementById('inAbort').onclick = () => { document.getElementById('mainMenu').classList.remove('hidden'); document.getElementById('gameScreen').classList.add('hidden'); };
 
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+
+        window.addEventListener('resize', () => { if(state) renderBoard(); });
     </script>
 </body>
 </html>
